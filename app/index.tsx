@@ -1,21 +1,58 @@
-import React, { useState } from 'react';
-// 1. Adicionado Image na importação abaixo
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
+
+// IMPORTAÇÕES DO BANCO DE DADOS
+import { getDB, DB } from '../src/database';
+import { realizarLoginDB, buscarUsuarioPorEmailDB } from '../src/repositories/UsuarioRepository';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [database, setDatabase] = useState<DB | null>(null);
 
-  const handleLogin = () => {
+  // Inicializa o banco de dados assim que a tela abre
+  useEffect(() => {
+    async function iniciarBanco() {
+      try {
+        const db = await getDB();
+        setDatabase(db);
+      } catch (error) {
+        console.error("Erro ao carregar o banco no Login:", error);
+      }
+    }
+    iniciarBanco();
+  }, []);
+
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Erro", "Por favor, preencha todos os campos.");
       return;
     }
-    console.log("Login realizado com sucesso!");
-    router.replace('/Inicial'); 
+
+    if (!database) {
+      Alert.alert("Erro", "Banco de dados não carregado.");
+      return;
+    }
+
+    try {
+      // Realiza o SELECT no SQLite procurando pelo e-mail limpo (sem espaços extras)
+      const usuarioExiste = await buscarUsuarioPorEmailDB(database, email.trim());
+
+      if (usuarioExiste) {
+        // Altera o status do usuário logado para 1
+        await realizarLoginDB(database, email.trim());
+        router.replace('/Inicial'); 
+      } else {
+        // Bloqueia se o e-mail digitado não foi cadastrado na tela de Criar Conta
+        Alert.alert("Acesso Negado", "Este e-mail não está registrado no StyleByte.");
+      }
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível validar seu acesso local.");
+      console.error(error);
+    }
   };
 
   return (
@@ -26,15 +63,16 @@ export default function LoginScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.container}>
-          <View style={styles.card}>
-            {/* Imagem do Logo */}
+          
+          <View style={styles.headerImagem}>
             <Image 
                 source={require('../assets/images/Stylebyte.png')} 
-                style={styles.imagem} 
+                style={styles.logo} 
                 resizeMode="contain" 
             />
-            
-            <Text style={styles.title}>StyleByte</Text>
+          </View>
+
+          <View style={styles.card}>
             <Text style={styles.subtitle}>Acesse sua conta para agendar</Text>
 
             <View style={styles.inputGroup}>
@@ -71,6 +109,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -78,29 +117,49 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#1a202c' },
-  container: { flexGrow: 1, justifyContent: 'center', padding: 20 },
+  safe: { 
+    flex: 1, 
+    backgroundColor: '#1a202c' 
+  },
+  container: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    padding: 20 
+  },
+  headerImagem: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    width: 450,
+    height: 300,
+  },
   card: { 
     backgroundColor: '#fff', 
     borderRadius: 20, 
     padding: 24, 
-    elevation: 4, 
     shadowColor: '#000', 
     shadowOpacity: 0.1, 
     shadowRadius: 10,
-    alignItems: 'center' // Centraliza a imagem e textos dentro do card
+    elevation: 5
   },
-  // 2. Adicionado o estilo da imagem aqui
-  imagem: {
-    width: 500,
-    height: 500,
-    borderBottomEndRadius: 20,
-    marginBottom: 20,
+  subtitle: { 
+    fontSize: 14, 
+    color: '#666', 
+    textAlign: 'center', 
+    marginBottom: 30, 
+    marginTop: 5 
   },
-  title: { fontSize: 26, fontWeight: 'bold', color: '#1a202c', textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 30, marginTop: 5 },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 8, alignSelf: 'flex-start' },
-  inputGroup: { marginBottom: 20, width: '100%' },
+  label: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: '#333', 
+    marginBottom: 8 
+  },
+  inputGroup: { 
+    marginBottom: 20, 
+    width: '100%' 
+  },
   input: { 
     borderWidth: 1, 
     borderColor: '#ddd', 
@@ -117,8 +176,21 @@ const styles = StyleSheet.create({
     marginTop: 10,
     width: '100%'
   },
-  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 25 },
-  footerText: { color: '#666' },
-  link: { color: '#1a202c', fontWeight: 'bold' }
+  btnText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  footer: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    marginTop: 25 
+  },
+  footerText: { 
+    color: '#666' 
+  },
+  link: { 
+    color: '#1a202c', 
+    fontWeight: 'bold' 
+  }
 });

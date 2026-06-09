@@ -1,35 +1,74 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
-import { Link } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { Link, useRouter, Stack } from 'expo-router';
 
-export default function index() {
+// IMPORTAÇÕES DO BANCO DE DADOS
+import { getDB, DB } from '../src/database';
+import { realizarLogoutDB } from '../src/repositories/UsuarioRepository';
+
+export default function Inicial() {
+    const router = useRouter();
+    const [database, setDatabase] = useState<DB | null>(null);
+
+    // Inicializa o banco de dados na tela inicial
+    useEffect(() => {
+        async function iniciarBanco() {
+            try {
+                const db = await getDB();
+                setDatabase(db);
+            } catch (error) {
+                console.error("Erro ao abrir banco na Inicial:", error);
+            }
+        }
+        iniciarBanco();
+    }, []);
+
+    // Função sair atualizada para limpar o status de login no SQLite
+    const handleSair = async () => {
+        if (database) {
+            try {
+                await realizarLogoutDB(database);
+            } catch (error) {
+                console.error("Erro ao deslogar:", error);
+            }
+        }
+        router.replace('/');
+    };
+
     return (
         <View style={styles.principal}>
+            <Stack.Screen 
+                options={{ 
+                    title: 'Barbearia StyleByte',
+                    headerTitleAlign: 'center',
+                    headerShadowVisible: false,
+                    headerStyle: { backgroundColor: '#f1f1f1' },
+                    headerTintColor: '#1a202c'
+                }} 
+            />
+
             <View style={styles.header}>
-                {/* Nome do seu novo projeto aqui! */}
-                <Text style={styles.texto}>StyleByte App</Text> 
-                
                 <View style={styles.nav}>
-                    <Link style={styles.Link} href={'/criar_conta'}>Criar Conta</Link>
                     <Link style={styles.Link} href={'/contatos'}>Contatos</Link>
                     <Link style={styles.Link} href={'/produtos'}>Produtos</Link>
+                    
+                    {/* NOVO LINK ADICIONADO PARA A TELA DE AGENDAMENTOS */}
+                    <Link style={styles.Link} href={'/meus_agendamentos'}>Agendamentos</Link>
+                    
                     <Link style={styles.Link} href={'/sobre'}>Sobre</Link>
+                    
+                    <TouchableOpacity onPress={handleSair}>
+                        <Text style={[styles.Link, { color: '#e53e3e' }]}>Sair</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
 
             <View style={styles.body}>
-                {/* Ajuste o caminho abaixo conforme a pasta onde salvou a foto. 
-                   Se estiver em assets/images, o caminho será: 
-                */}
-               
-          <Image 
-            source={require('../assets/images/Stylebyte.png')} 
-            style={styles.mainLogo} 
-            resizeMode="contain"
-          />
-            </View>
-
-            <View style={styles.footer}>
-                <Text style={styles.texto}>copyright @2026 </Text>
+                <Image 
+                    source={require('../assets/images/Stylebyte.png')} 
+                    style={styles.mainLogo} 
+                    resizeMode="contain"
+                />
             </View>
         </View>
     );
@@ -38,46 +77,29 @@ export default function index() {
 const styles = StyleSheet.create({
     principal: { flex: 1 },
     header: {
-        height: 100, // Aumentei um pouco para caber o texto e os links melhor
-        backgroundColor: "#2f81b8",
+        height: 50, 
+        backgroundColor: "#f1f1f1",
         justifyContent: "center",
         alignItems: "center",
-        paddingTop: 20
     },
     body: {
         flex: 1,
         alignItems: "center",
-        backgroundColor: "#38c4ac",
+        backgroundColor: "#1a202c",
         justifyContent: "center",
-        gap: 16
-    },
-    footer: {
-        height: 50,
-        backgroundColor: "#297067",
-        justifyContent: "center",
-        alignItems: "center"
     },
     nav: {
         flexDirection: "row",
-        gap: 20, // Diminuí um pouco o gap para não vazar da tela
-        marginTop: 6,
+        gap: 15, // Diminuí ligeiramente o gap para acomodar o novo link sem estourar o menu
+        alignItems: 'center'
     },
     Link: {
-        fontSize: 16, // Ajustado para telas menores
-        color: "#f1f1f1"
+        fontSize: 14, 
+        color: "#1a202c",
+        fontWeight: 'bold'
     },
-
-    texto: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: "#f1f1f1"
-    },
-    mainLogo: { width: 140, height: 140, marginBottom: 20 },
-  title: { color: '#fff', fontSize: 26, fontWeight: 'bold', textAlign: 'center' },
-  subtitle: { color: '#fff', opacity: 0.9, textAlign: 'center', marginTop: 12, fontSize: 16, lineHeight: 22 },
-  btnGroup: { width: '100%', marginTop: 35, gap: 15 },
-  buttonPrimary: { 
-    backgroundColor: '#fff', padding: 16, borderRadius: 10, alignItems: 'center',
-    elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2,
-  },
+    mainLogo: { 
+        width: 600, // Ajustado de 600 para 300 para não vazar das bordas da maioria das telas de celular
+        height: 300 
+    }
 });
